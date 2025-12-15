@@ -16,7 +16,7 @@ WINDOW_SEC=30   # rolling window to compute event frequency
 MAX_EVENTS_WINDOW=10  # normalize event frequency (10 events/window => event_rate ~ 1)
 ALERT_LOOKBACK_MIN=30 # recent alerts panel window
 HEATMAP_LOOKBACK_HR=2 # heatmap uses last N hours
-SHEET_CSV_URL="PASTE_YOUR_CSV_URL_HERE"  # e.g. your published CSV link
+SHEET_CSV_URL="https://docs.google.com/spreadsheets/d/1lfQJxC4uag5Hoky01L5bjJStWnljb473QTNbsl01KC0/edit?gid=0#gid=0"  # e.g. your published CSV link
 
 st.set_page_config(page_title="Stray Dog Control System",layout="wide")
 st_autorefresh(interval=REFRESH_MS,key="data_refresh")
@@ -95,8 +95,8 @@ def severity_fuzzy_basic(C,N,R):
 # Optional columns:
 # stray_count,pet_count,human_count
 # =========================
-def load_data_from_sheet(url):
-    df=pd.read_csv(url)
+def load_data_from_sheet(SHEET_CSV_URL):
+    df=pd.read_csv(SHEET_CSV_URL)
     for c in ["timestamp","camera_id","location","class","confidence","dog_count","image_url"]:
         if c not in df.columns:
             df[c]=None
@@ -385,3 +385,4 @@ st.dataframe(filtered[show_cols].tail(50).reset_index(drop=True),use_container_w
 st.markdown("</div>",unsafe_allow_html=True)
 
 st.markdown(f"<div class='footer'>Status: Dashboard checks Google Sheets for new data every {int(REFRESH_MS/1000)} seconds.</div>",unsafe_allow_html=True)
+
