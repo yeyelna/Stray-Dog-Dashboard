@@ -16,7 +16,7 @@ WINDOW_SEC=30   # rolling window to compute event frequency
 MAX_EVENTS_WINDOW=10  # normalize event frequency (10 events/window => event_rate ~ 1)
 ALERT_LOOKBACK_MIN=30 # recent alerts panel window
 HEATMAP_LOOKBACK_HR=2 # heatmap uses last N hours
-SHEET_CSV_URL="https://docs.google.com/spreadsheets/d/1lfQJxC4uag5Hoky01L5bjJStWnljb473QTNbsl01KC0/edit?gid=0#gid=0"  # e.g. your published CSV link
+SHEET_CSV_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vSxyGtEAyftAfaY3M3H_sMvnA6oYcTsVjxMLVznP7SXvGA4rTXfrvzESYgSND7Z6o9qTrD-y0QRyvPo/pub?gid=0&single=true&output=csv"
 
 st.set_page_config(page_title="Stray Dog Control System",layout="wide")
 st_autorefresh(interval=REFRESH_MS,key="data_refresh")
@@ -95,14 +95,21 @@ def severity_fuzzy_basic(C,N,R):
 # Optional columns:
 # stray_count,pet_count,human_count
 # =========================
-def load_data_from_sheet(SHEET_CSV_URL):
-    df=pd.read_csv(SHEET_CSV_URL)
+import io
+import requests
+
+def load_data_from_sheet(url):
+    try:
+        df=pd.read_csv(url)
+    except Exception:
+        text=requests.get(url,timeout=20).text
+        df=pd.read_csv(io.StringIO(text),engine="python",on_bad_lines="skip")
+    df.columns=[c.strip() for c in df.columns]
     for c in ["timestamp","camera_id","location","class","confidence","dog_count","image_url"]:
         if c not in df.columns:
             df[c]=None
     df["timestamp"]=pd.to_datetime(df["timestamp"],errors="coerce")
-    df=df.dropna(subset=["timestamp"])
-    df=df.sort_values("timestamp",ascending=True)
+    df=df.dropna(subset=["timestamp"]).sort_values("timestamp",ascending=True)
     df["confidence"]=pd.to_numeric(df["confidence"],errors="coerce").fillna(0.0).clip(0,1)
     df["dog_count"]=pd.to_numeric(df["dog_count"],errors="coerce").fillna(1).astype(int)
     df["camera_id"]=df["camera_id"].fillna("unknown").astype(str)
@@ -110,6 +117,9 @@ def load_data_from_sheet(SHEET_CSV_URL):
     df["class"]=df["class"].fillna("dog").astype(str)
     df["image_url"]=df["image_url"].fillna("").astype(str)
     return df
+
+st.write("Columns:", list(df.columns))
+st.dataframe(df.head(5))
 
 def add_event_rate_and_severity(df):
     if df.empty:
@@ -385,4 +395,5 @@ st.dataframe(filtered[show_cols].tail(50).reset_index(drop=True),use_container_w
 st.markdown("</div>",unsafe_allow_html=True)
 
 st.markdown(f"<div class='footer'>Status: Dashboard checks Google Sheets for new data every {int(REFRESH_MS/1000)} seconds.</div>",unsafe_allow_html=True)
+
 
